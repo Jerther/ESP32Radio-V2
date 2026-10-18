@@ -1598,9 +1598,9 @@ bool connectwifi()
   WiFi.mode ( WIFI_STA ) ;                              // This ESP is a station
   WiFi.disconnect ( true ) ;                            // After restart the router could
   WiFi.softAPdisconnect ( true ) ;                      // still keep the old connection
-  vTaskDelay ( 1000 / portTICK_PERIOD_MS ) ;            // Silly things to start connection
+  vTaskDelay ( 100 / portTICK_PERIOD_MS ) ;             // Silly things to start connection
   WiFi.mode ( WIFI_STA ) ;
-  vTaskDelay ( 1000 / portTICK_PERIOD_MS ) ;
+  vTaskDelay ( 100 / portTICK_PERIOD_MS ) ;
   if ( wifiMulti.run() == WL_NO_SSID_AVAIL )            // Connect to best network
   {
     localAP = true ;
@@ -2539,7 +2539,6 @@ void setup()
 
   maintask = xTaskGetCurrentTaskHandle() ;                // My taskhandle
   outchunk.datatyp = QDATA ;                              // This chunk dedicated to QDATA
-  vTaskDelay ( 3000 / portTICK_PERIOD_MS ) ;              // Wait for PlatformIO monitor to start
   Serial.begin ( 115200 ) ;                               // For debug
   WRITE_PERI_REG ( RTC_CNTL_BROWN_OUT_REG, 0 ) ;          // Disable brownout detector
   log_printf ( "\n" ) ;
@@ -2669,10 +2668,10 @@ void setup()
     mk_lsan() ;                                          // Make a list of acceptable networks
                                                          // in preferences.
     WiFi.disconnect() ;                                  // After restart router could still
-    vTaskDelay ( 500 / portTICK_PERIOD_MS ) ;            //   keep old connection
+    vTaskDelay ( 100 / portTICK_PERIOD_MS ) ;             //   keep old connection
     WiFi.mode ( WIFI_STA ) ;                             // This ESP is a station
     // WiFi.setSleep (false ) ;                          // should prevent _poll(): pcb is NULL""error"
-    vTaskDelay ( 500 / portTICK_PERIOD_MS ) ;            // ??
+    vTaskDelay ( 100 / portTICK_PERIOD_MS ) ;             // ??
     WiFi.persistent ( false ) ;                          // Do not save SSID and password
   #endif
   readprefs ( false ) ;                                  // Read preferences
@@ -2747,7 +2746,6 @@ void setup()
   timerAttachInterrupt ( timer, &timer100, false ) ;     // Call timer100() on timer alarm
   timerAlarmWrite ( timer, 100000, true ) ;              // Alarm every 100 msec
   timerAlarmEnable ( timer ) ;                           // Enable the timer
-  vTaskDelay ( 1000 / portTICK_PERIOD_MS ) ;             // Show IP for a while
   configTime ( ini_block.clk_offset * 3600,
                ini_block.clk_dst * 3600,
                ini_block.clk_server.c_str() ) ;          // GMT offset, daylight offset in seconds
@@ -2784,10 +2782,6 @@ void setup()
                 ini_block.enc_sw_pin ) ;
     }
   #endif
-  if ( NetworkFound )
-  {
-    gettime() ;                                           // Sync time
-  }
   adc1_config_width ( ADC_WIDTH_12Bit ) ;
   adc1_config_channel_atten ( ADC1_CHANNEL_0, ADC_ATTEN_DB_12 ) ;  // VP/GPIO36 (ESP32), GPIO1 (ESP32-S3)
   xTaskCreatePinnedToCore (
