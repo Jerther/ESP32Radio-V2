@@ -140,6 +140,8 @@
 #include <SPI.h>                                          // For SPI handling
 #ifdef ENABLEOTA
   #include <ArduinoOTA.h>                                 // Over the air updates
+  #include <esp_ota_ops.h>
+  const uint32_t FIRMWARE_TRIAL_MS = 60000 ;
 #endif
 #include <freertos/queue.h>                               // FreeRtos queue support
 #include <freertos/task.h>                                // FreeRtos task handling
@@ -359,6 +361,7 @@ bool                 testreq = false ;                   // Request to print tes
 bool                 sleepreq = false ;                  // Request for deep sleep
 bool                 eth_connected = false ;             // Ethernet connected or not
 bool                 NetworkFound = false ;              // True if WiFi network connected
+const uint32_t       LOCAL_AP_LIFETIME_MS = 300000 ;
 bool                 mqtt_on = false ;                   // MQTT in use
 uint16_t             mqttcount = 0 ;                     // Counter MAXMQTTCONNECTS
 int8_t               playingstat = 0 ;                   // 1 if radio is playing (for MQTT)
@@ -1672,7 +1675,47 @@ void otaerror ( ota_error_t error)
   ESP_LOGE ( TAG, "OTA error %d", error ) ;
   tftset ( 2, "OTA error!" ) ;                        // Set screen segment bottom part
 }
+
+
+//**************************************************************************************************
+//                                C O N F I R M F I R M W A R E                                    *
+//**************************************************************************************************
+// Keep a new firmware only once it has run on the network long enough to accept the next OTA.     *
+// If it restarts before that, the bootloader rolls back to the previous firmware.                 *
+//**************************************************************************************************
+extern "C" bool verifyRollbackLater()
+{
+  return true ;
+}
+
+void confirmfirmware()
+{
+  static bool confirmed = false ;
+
+  if ( confirmed || ! NetworkFound || millis() < FIRMWARE_TRIAL_MS )
+  {
+    return ;
+  }
+  esp_ota_mark_app_valid_cancel_rollback() ;
+  confirmed = true ;
+  ESP_LOGI ( TAG, "Firmware confirmed" ) ;
+}
 #endif                                                // ENABLEOTA
+
+
+//**************************************************************************************************
+//                              R E S T A R T I F N O N E T W O R K                                *
+//**************************************************************************************************
+// Restart to retry the network rather than leave the local AP open indefinitely.                  *
+//**************************************************************************************************
+void restartifnonetwork()
+{
+  if ( ! NetworkFound && millis() > LOCAL_AP_LIFETIME_MS )
+  {
+    ESP_LOGI ( TAG, "No network, restarting" ) ;
+    ESP.restart() ;
+  }
+}
 
 
 //**************************************************************************************************
@@ -3398,7 +3441,9 @@ void loop()
   scanIR() ;                                        // See if IR input
   #ifdef ENABLEOTA
     ArduinoOTA.handle() ;                           // Check for OTA
+    confirmfirmware() ;
   #endif
+  restartifnonetwork() ;
   if ( mqtt_on )                                    // Need to handle MQTT?
   {
     mqttclient.loop() ;                             // Handling of MQTT connection
